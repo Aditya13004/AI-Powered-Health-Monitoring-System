@@ -17,7 +17,9 @@ export const ocrAiService = {
     const prompt = `You are a helpful medical AI assistant. A user has uploaded a document and extracted its text via OCR. Analyze the text below and return a JSON object. Provide all JSON values entirely in the language corresponding to ISO code: ${lang}.
 
 RULES:
-- If the document is NOT a medical report (e.g. it's a resume, invoice, etc.), still return the JSON but note that in overallSummary and set documentType to the correct type.
+- Evaluate if the text is readable enough to interpret. If the text is completely garbled or unreadable handwriting, set "isReadable" to false.
+- Extract any prescribed medications along with their dosage, frequency, duration, and patient instructions.
+- If the document is NOT a medical report or prescription, still return the JSON but note that in overallSummary and set documentType to the correct type.
 - Do NOT diagnose or prescribe.
 - Use plain, patient-friendly language.
 - Keep each list item to one concise sentence.
@@ -25,10 +27,21 @@ RULES:
 
 REQUIRED JSON FORMAT:
 {
-  "documentType": "string (e.g. Blood Test Report, Prescription, Radiology Report, Resume, Unknown)",
+  "isReadable": boolean,
+  "aiConfidence": number (0-100 indicating your confidence in interpreting the text),
+  "documentType": "string (e.g. Prescription, Blood Test Report, Radiology Report, Resume, Unknown)",
   "overallSummary": "string (2-3 sentence summary of what the document contains)",
-  "keyObservations": ["string", "string"],
-  "importantValues": ["string", "string"],
+  "medications": [
+    {
+      "medicine": "string (e.g. Paracetamol 500mg)",
+      "dosage": "string (e.g. 1 tablet twice daily)",
+      "duration": "string (e.g. 5 days)",
+      "instructions": "string (e.g. After meals)"
+    }
+  ],
+  "doctorNotes": "string (any extra notes from doctor)",
+  "keyObservations": ["string"],
+  "importantValues": ["string"],
   "possibleAbnormalities": ["string"],
   "disclaimer": "string (short note that this is AI-generated, not a medical diagnosis)"
 }
@@ -74,8 +87,12 @@ Return only the JSON object:`;
 
       // Ensure all expected keys exist with fallback defaults
       return {
+        isReadable:            parsed.isReadable !== false,
+        aiConfidence:          typeof parsed.aiConfidence === 'number' ? parsed.aiConfidence : null,
         documentType:          parsed.documentType          || 'Unknown',
         overallSummary:        parsed.overallSummary        || 'Analysis complete.',
+        medications:           Array.isArray(parsed.medications)           ? parsed.medications           : [],
+        doctorNotes:           parsed.doctorNotes           || '',
         keyObservations:       Array.isArray(parsed.keyObservations)       ? parsed.keyObservations       : [],
         importantValues:       Array.isArray(parsed.importantValues)       ? parsed.importantValues       : [],
         possibleAbnormalities: Array.isArray(parsed.possibleAbnormalities) ? parsed.possibleAbnormalities : [],

@@ -38,6 +38,26 @@ function formatBytes(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+/** Preprocess image using Canvas for better OCR (grayscale, contrast, threshold) */
+async function preprocessImage(fileOrBlob) {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    const url = URL.createObjectURL(fileOrBlob);
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const canvas = document.createElement('canvas');
+      canvas.width = img.width;
+      canvas.height = img.height;
+      const ctx = canvas.getContext('2d');
+      ctx.filter = 'grayscale(100%) contrast(150%) brightness(110%)';
+      ctx.drawImage(img, 0, 0);
+      canvas.toBlob((blob) => resolve(blob), 'image/png');
+    };
+    img.onerror = reject;
+    img.src = url;
+  });
+}
+
 /** Dynamically load Tesseract.js from CDN and run OCR on an image File/Blob */
 async function runTesseractOcr(imageInput, onProgress) {
   const mod = await import(/* @vite-ignore */ TESSERACT_CDN);
@@ -50,7 +70,7 @@ async function runTesseractOcr(imageInput, onProgress) {
 
   // Use createWorker for progress tracking — corePath must be a directory URL, not a file
   const createWorker = Tesseract.createWorker;
-  const worker = await createWorker('eng', 1, {
+  const worker = await createWorker('eng+hin+mar', 1, {
     workerPath: 'https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/worker.min.js',
     corePath:   'https://cdn.jsdelivr.net/npm/tesseract.js-core@5.1.1',
     langPath:   'https://tessdata.projectnaptha.com/4.0.0',
@@ -342,6 +362,24 @@ function AiSummaryCard({ summary, isLoading, error, onRetry }) {
 
   if (!summary) return null;
 
+  if (summary.isReadable === false) {
+    return (
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="glass rounded-3xl p-5 space-y-4">
+        <h3 className="font-semibold text-slate-800 dark:text-slate-200 flex items-center gap-2">
+          <SparklesIcon className="h-5 w-5 text-purple-500" />
+          {t('ocr.aiSummary', { defaultValue: 'AI Medical Summary' })}
+        </h3>
+        <div className="flex items-start gap-3 p-4 rounded-2xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+          <ExclamationTriangleIcon className="h-5 w-5 text-amber-500 flex-shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-semibold text-amber-700 dark:text-amber-300 mb-1">Unreadable Text</p>
+            <p className="text-sm text-amber-600 dark:text-amber-400">Prescription handwriting could not be confidently interpreted.</p>
+          </div>
+        </div>
+      </motion.div>
+    );
+  }
+
   const sections = [
     { icon: MagnifyingGlassIcon, label: 'Key Observations',       color: 'blue',  items: summary.keyObservations,      emptyMessage: 'None found' },
     { icon: BeakerIcon,          label: 'Important Values',        color: 'teal',  items: summary.importantValues,      emptyMessage: 'None found' },
@@ -375,6 +413,36 @@ function AiSummaryCard({ summary, isLoading, error, onRetry }) {
       {summary.overallSummary && (
         <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
           <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{summary.overallSummary}</p>
+        </div>
+      )}
+
+      {summary.medications && summary.medications.length > 0 && (
+        <div className="rounded-2xl border p-4 space-y-4 bg-indigo-50 dark:bg-indigo-900/20 border-indigo-200 dark:border-indigo-800">
+          <div className="flex items-center gap-2">
+            <BeakerIcon className="h-5 w-5 text-indigo-500 flex-shrink-0" />
+            <span className="text-sm font-bold uppercase tracking-wider text-indigo-700 dark:text-indigo-400">
+              Prescribed Medications
+            </span>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {summary.medications.map((med, i) => (
+              <div key={i} className="p-3 bg-white dark:bg-slate-800 rounded-xl border border-indigo-100 dark:border-indigo-800/50 space-y-2">
+                <p className="font-semibold text-slate-800 dark:text-slate-200 text-sm">{med.medicine}</p>
+                <div className="text-xs text-slate-600 dark:text-slate-400 space-y-1">
+                  {med.dosage && <p><span className="font-medium">Dosage:</span> {med.dosage}</p>}
+                  {med.duration && <p><span className="font-medium">Duration:</span> {med.duration}</p>}
+                  {med.instructions && <p><span className="font-medium">Instructions:</span> {med.instructions}</p>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {summary.doctorNotes && (
+        <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700">
+          <p className="text-xs font-bold uppercase text-slate-500 dark:text-slate-400 mb-1">Doctor's Notes</p>
+          <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{summary.doctorNotes}</p>
         </div>
       )}
 
@@ -488,6 +556,10 @@ export default function OcrScanner() {
         setOcrProgress(10);
         imageInput = await pdfToImageBlob(file);
       }
+
+      setOcrProgressLabel('Preprocessing image...');
+      setOcrProgress(15);
+      imageInput = await preprocessImage(imageInput);
 
       setOcrProgressLabel('Recognizing text...');
       const result = await runTesseractOcr(imageInput, (p) => {
@@ -677,20 +749,35 @@ export default function OcrScanner() {
           {ocrStatus === 'done' && (
             <motion.div key="results-done" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="space-y-6">
 
-              {ocrConfidence !== null && (
-                <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="flex items-center gap-2">
-                  <CheckCircleIcon className={`h-5 w-5 ${ocrConfidence > 70 ? 'text-emerald-500' : 'text-amber-500'}`} />
-                  <span className="text-sm text-slate-600 dark:text-slate-400">
-                    OCR Confidence:{' '}
-                    <span className={`font-semibold ${ocrConfidence > 70 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
-                      {ocrConfidence.toFixed(1)}%
-                    </span>
-                    {ocrConfidence < 70 && (
-                      <span className="text-amber-500 ml-2 text-xs">
-                        — Low confidence. Try a higher resolution image.
+              {(ocrConfidence !== null || (aiSummary && aiSummary.aiConfidence !== null)) && (
+                <motion.div initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col sm:flex-row sm:items-center gap-4 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-2xl border border-slate-200 dark:border-slate-700">
+                  {ocrConfidence !== null && (
+                    <div className="flex items-center gap-2">
+                      <CheckCircleIcon className={`h-5 w-5 ${ocrConfidence > 70 ? 'text-emerald-500' : 'text-amber-500'}`} />
+                      <span className="text-sm text-slate-600 dark:text-slate-400">
+                        OCR Confidence:{' '}
+                        <span className={`font-semibold ${ocrConfidence > 70 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                          {ocrConfidence.toFixed(1)}%
+                        </span>
                       </span>
-                    )}
-                  </span>
+                    </div>
+                  )}
+                  {aiSummary && aiSummary.aiConfidence !== null && (
+                    <div className="flex items-center gap-2 sm:pl-4 sm:border-l border-slate-200 dark:border-slate-700">
+                      <SparklesIcon className={`h-5 w-5 ${aiSummary.aiConfidence > 70 ? 'text-emerald-500' : 'text-amber-500'}`} />
+                      <span className="text-sm text-slate-600 dark:text-slate-400">
+                        AI Confidence:{' '}
+                        <span className={`font-semibold ${aiSummary.aiConfidence > 70 ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
+                          {aiSummary.aiConfidence}%
+                        </span>
+                      </span>
+                    </div>
+                  )}
+                  {((ocrConfidence !== null && ocrConfidence < 70) || (aiSummary && aiSummary.aiConfidence !== null && aiSummary.aiConfidence < 70)) && (
+                    <span className="text-amber-500 text-xs sm:ml-auto">
+                      — Low confidence. Try a clearer image.
+                    </span>
+                  )}
                 </motion.div>
               )}
 
