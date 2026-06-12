@@ -7,12 +7,14 @@ import {
   ClockIcon,
   BuildingOfficeIcon,
   CheckCircleIcon,
-  XCircleIcon
+  XCircleIcon,
+  PlusIcon
 } from '@heroicons/react/24/outline';
-
-const API_URL = 'http://localhost:8787';
+import { appointmentService } from '../services/appointmentService';
+import { useTranslation } from 'react-i18next';
 
 export default function Appointments() {
+  const { t } = useTranslation();
   const location = useLocation();
   const [patients, setPatients] = useState([]);
   const [selectedPatientId, setSelectedPatientId] = useState(null);
@@ -54,9 +56,9 @@ export default function Appointments() {
 
   async function fetchPatients() {
     try {
-      const response = await fetch(`${API_URL}/api/patients`);
-      const result = await response.json();
-      const list = result.data || [];
+      const { data, error } = await appointmentService.getPatients();
+      if (error) throw new Error(error);
+      const list = data || [];
       setPatients(list);
       if (list.length > 0) {
         setSelectedPatientId(list[0].id);
@@ -73,9 +75,9 @@ export default function Appointments() {
     try {
       setIsLoading(true);
       setError(null);
-      const response = await fetch(`${API_URL}/api/patients/${patientId}/appointments?limit=10`);
-      const result = await response.json();
-      setAppointments(result.data || []);
+      const { data, error } = await appointmentService.getAppointments(patientId);
+      if (error) throw new Error(error);
+      setAppointments(data || []);
     } catch (e) {
       console.error('Failed to fetch appointments:', e);
       setError('Unable to load appointments for this patient.');
@@ -88,8 +90,7 @@ export default function Appointments() {
     const { name, value } = e.target;
     setFormData((prev) => {
       if (name === 'duration_minutes') {
-        const minutes = timeStringToMinutes(value);
-        return { ...prev, duration_minutes: minutes };
+        return { ...prev, duration_minutes: parseInt(value, 10) || 60 };
       }
       return { ...prev, [name]: value };
     });
@@ -99,8 +100,7 @@ export default function Appointments() {
     const { name, value } = e.target;
     setEditForm((prev) => {
       if (name === 'duration_minutes') {
-        const minutes = timeStringToMinutes(value);
-        return { ...prev, duration_minutes: minutes };
+        return { ...prev, duration_minutes: parseInt(value, 10) || 60 };
       }
       return { ...prev, [name]: value };
     });
@@ -119,23 +119,6 @@ export default function Appointments() {
     return `${yyyy}-${mm}-${dd}T${hh}:${mi}`;
   };
 
-  const timeStringToMinutes = (value) => {
-    if (!value) return 0;
-    const [hStr, mStr] = value.split(':');
-    const h = parseInt(hStr, 10);
-    const m = parseInt(mStr, 10);
-    if (Number.isNaN(h) || Number.isNaN(m)) return 0;
-    return h * 60 + m;
-  };
-
-  const minutesToTimeString = (minutes) => {
-    if (minutes == null) return '';
-    const h = Math.floor(minutes / 60);
-    const m = minutes % 60;
-    const pad = (n) => String(n).padStart(2, '0');
-    return `${pad(h)}:${pad(m)}`;
-  };
-
   const handleCreateAppointment = async (e) => {
     e.preventDefault();
     if (!selectedPatientId) return;
@@ -150,25 +133,18 @@ export default function Appointments() {
 
       const payload = {
         ...formData,
+        scheduled_date: new Date(formData.scheduled_date).toISOString(),
         // duration_minutes already stored as minutes from the hours field
         duration_minutes: formData.duration_minutes || 60,
       };
 
-      const response = await fetch(`${API_URL}/api/patients/${selectedPatientId}/appointments`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
+      const { data, error: serviceError } = await appointmentService.createAppointment(selectedPatientId, payload);
 
-      if (!response.ok) {
-        const body = await response.json().catch(() => null);
-        throw new Error(body?.error || 'Failed to create appointment');
+      if (serviceError) {
+        throw new Error(serviceError || 'Failed to create appointment');
       }
 
-      const body = await response.json().catch(() => null);
-      setLastCreated(body?.data || null);
+      setLastCreated(data || null);
       setShowSuccessModal(true);
 
       // Fallback native popup so user always sees confirmation
@@ -221,18 +197,16 @@ export default function Appointments() {
     try {
       setIsSubmitting(true);
       setError(null);
-      const response = await fetch(
-        `${API_URL}/api/patients/${selectedPatientId}/appointments/${apptId}`,
-        {
-          method: 'PUT',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(editForm),
-        }
-      );
+      
+      const payload = {
+        ...editForm,
+        scheduled_date: new Date(editForm.scheduled_date).toISOString()
+      };
+      
+      const { error: serviceError } = await appointmentService.updateAppointment(apptId, payload);
 
-      if (!response.ok) {
-        const body = await response.json().catch(() => null);
-        throw new Error(body?.error || 'Failed to update appointment');
+      if (serviceError) {
+        throw new Error(serviceError || 'Failed to update appointment');
       }
 
       setEditingId(null);
@@ -251,13 +225,10 @@ export default function Appointments() {
     try {
       setIsSubmitting(true);
       setError(null);
-      const response = await fetch(
-        `${API_URL}/api/patients/${selectedPatientId}/appointments/${apptId}`,
-        { method: 'DELETE' }
-      );
-      if (!response.ok) {
-        const body = await response.json().catch(() => null);
-        throw new Error(body?.error || 'Failed to delete appointment');
+      const { error: serviceError } = await appointmentService.deleteAppointment(apptId);
+
+      if (serviceError) {
+        throw new Error(serviceError || 'Failed to delete appointment');
       }
       await fetchAppointments(selectedPatientId);
     } catch (e) {
@@ -354,20 +325,20 @@ export default function Appointments() {
         >
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-4">
             <div className="flex-1">
-              <h1 className="text-4xl sm:text-5xl font-bold text-slate-900 dark:text-white mb-2">
-                Patient <span className="gradient-text">Appointments</span>
+              <h1 className="text-3xl sm:text-5xl font-bold text-slate-900 dark:text-white mb-2 leading-tight">
+                {t('appointments.title')}
               </h1>
-              <p className="text-lg text-slate-600 dark:text-slate-400">
-                View and manage upcoming visits using the same patient context as your dashboard.
+              <p className="text-base sm:text-lg text-slate-600 dark:text-slate-400">
+                {t('appointments.subtitle')}
               </p>
             </div>
 
-            {patients.length > 0 && (
+            {patients.length > 0 ? (
               <div className="flex items-center gap-3">
                 <UserIcon className="h-5 w-5 text-slate-500 dark:text-slate-400" />
                 <select
                   value={selectedPatientId || ''}
-                  onChange={(e) => setSelectedPatientId(parseInt(e.target.value))}
+                  onChange={(e) => setSelectedPatientId(e.target.value)}
                   className="px-4 py-2 rounded-lg border border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-teal-500"
                 >
                   {patients.map((patient) => (
@@ -377,6 +348,30 @@ export default function Appointments() {
                   ))}
                 </select>
               </div>
+            ) : (
+              <button
+                onClick={async () => {
+                  try {
+                    // Quick-create a default patient to unlock scheduling
+                    const { data } = await appointmentService.createPatient({
+                      first_name: 'My',
+                      last_name: 'Profile',
+                      full_name: 'My Profile',
+                      age: 30,
+                      gender: 'Not specified'
+                    });
+                    if (data) {
+                      setPatients([data]);
+                      setSelectedPatientId(data.id);
+                    }
+                  } catch (e) {
+                    console.error('Failed to create patient:', e);
+                  }
+                }}
+                className="px-4 py-2 rounded-lg bg-teal-600 text-white text-sm font-medium hover:bg-teal-700 transition-colors shadow-sm"
+              >
+                {t('appointments.newPatient')}
+              </button>
             )}
           </div>
 
@@ -392,21 +387,21 @@ export default function Appointments() {
           transition={{ duration: 0.6, delay: 0.2 }}
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8"
         >
-          <div className="card flex items-center justify-between p-6">
+          <div className="card flex items-center justify-between p-4 sm:p-6">
             <div>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Upcoming appointments</p>
-              <p className="text-3xl font-bold text-slate-900 dark:text-white">{upcomingCount}</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">{t('appointments.upcoming')}</p>
+              <p className="text-2xl sm:text-3xl font-bold text-slate-900 dark:text-white">{upcomingCount}</p>
             </div>
             <div className="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
               <CalendarDaysIcon className="h-6 w-6 text-blue-600 dark:text-blue-400" />
             </div>
           </div>
 
-          <div className="card flex items-center justify-between p-6">
-            <div>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Next appointment</p>
+          <div className="card flex items-center justify-between p-4 sm:p-6">
+            <div className="flex-1 min-w-0 mr-3">
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">{t('appointments.next', { defaultValue: 'Next appointment' })}</p>
               <p className="text-base font-semibold text-slate-900 dark:text-white">
-                {nextAppointmentDate || 'No upcoming appointment'}
+                {nextAppointmentDate || t('appointments.noUpcomingAppt', { defaultValue: 'No upcoming appointment' })}
               </p>
             </div>
             <div className="w-12 h-12 rounded-xl bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
@@ -414,19 +409,19 @@ export default function Appointments() {
             </div>
           </div>
 
-          <div className="card flex items-center justify-between p-6">
-            <div>
-              <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">Status</p>
+          <div className="card flex items-center justify-between p-4 sm:p-6">
+            <div className="flex-1 min-w-0 mr-3">
+              <p className="text-sm text-slate-500 dark:text-slate-400 mb-1">{t('appointments.status', { defaultValue: 'Status' })}</p>
               <p className="text-base font-semibold text-slate-900 dark:text-white flex items-center gap-2">
                 {upcomingCount > 0 ? (
                   <>
                     <CheckCircleIcon className="h-5 w-5 text-emerald-500" />
-                    Scheduled
+                    {t('appointments.scheduled', { defaultValue: 'Scheduled' })}
                   </>
                 ) : (
                   <>
                     <XCircleIcon className="h-5 w-5 text-slate-400" />
-                    No upcoming visits
+                    {t('appointments.noVisits', { defaultValue: 'No upcoming visits' })}
                   </>
                 )}
               </p>
@@ -445,18 +440,16 @@ export default function Appointments() {
           <div className="lg:col-span-2 space-y-6 lg:order-1">
             <div className="card p-6">
               <h2 className="text-2xl sm:text-3xl font-semibold text-slate-900 dark:text-white mb-2">
-                Schedule an appointment
+                {t('appointments.scheduleTitle', { defaultValue: 'Schedule an appointment' })}
               </h2>
               <p className="text-sm text-slate-600 dark:text-slate-400 mb-6">
-                Use the same HealthSync patient context to plan follow-up care, routine checkups, or
-                teleconsultations. Appointments stay tightly aligned with real-time monitoring on the
-                dashboard.
+                {t('appointments.scheduleDesc', { defaultValue: 'Use the same HealthSync patient context to plan follow-up care, routine checkups, or teleconsultations. Appointments stay tightly aligned with real-time monitoring on the dashboard.' })}
               </p>
 
               <form onSubmit={handleCreateAppointment} className="space-y-5">
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                    Appointment type
+                    {t('appointments.apptType', { defaultValue: 'Appointment type' })}
                   </label>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3">
                     {[
@@ -494,7 +487,7 @@ export default function Appointments() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                      Doctor name
+                      {t('appointments.docName', { defaultValue: 'Doctor name' })}
                     </label>
                     <input
                       name="doctor_name"
@@ -506,7 +499,7 @@ export default function Appointments() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                      Department
+                      {t('appointments.dept', { defaultValue: 'Department' })}
                     </label>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mb-3">
                       {[
@@ -546,7 +539,7 @@ export default function Appointments() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                      Date & time *
+                      {t('appointments.dateTime', { defaultValue: 'Date & time *' })}
                     </label>
                     <input
                       required
@@ -559,22 +552,27 @@ export default function Appointments() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                      Duration (HH:MM)
+                      {t('appointments.duration', { defaultValue: 'Duration' })}
                     </label>
-                    <input
-                      type="time"
+                    <select
                       name="duration_minutes"
-                      step="900"
-                      value={minutesToTimeString(formData.duration_minutes)}
+                      value={formData.duration_minutes}
                       onChange={handleFormChange}
-                      className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
-                    />
+                      className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
+                    >
+                      <option value="15">15 minutes</option>
+                      <option value="30">30 minutes</option>
+                      <option value="45">45 minutes</option>
+                      <option value="60">1 hour</option>
+                      <option value="90">1.5 hours</option>
+                      <option value="120">2 hours</option>
+                    </select>
                   </div>
                 </div>
 
                 <div>
                   <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                    Notes
+                    {t('appointments.notes', { defaultValue: 'Notes' })}
                   </label>
                   <textarea
                     name="notes"
@@ -593,7 +591,7 @@ export default function Appointments() {
                   disabled={isSubmitting || !selectedPatientId}
                   className="w-full btn-primary disabled:opacity-60 disabled:cursor-not-allowed"
                 >
-                  {isSubmitting ? 'Scheduling...' : 'Schedule appointment'}
+                  {isSubmitting ? t('appointments.scheduling', { defaultValue: 'Scheduling...' }) : t('appointments.scheduleBtn', { defaultValue: 'Schedule appointment' })}
                 </motion.button>
               </form>
             </div>
@@ -604,16 +602,16 @@ export default function Appointments() {
             <div className="flex flex-col gap-3 mb-4">
               <div className="flex items-center justify-between gap-3">
                 <h2 className="text-xl font-semibold text-slate-900 dark:text-white">
-                  Appointments
+                  {t('appointments.listTitle', { defaultValue: 'Appointments' })}
                 </h2>
                 <span className="text-xs px-3 py-1 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300">
-                  Synced with patient dashboard
+                  {t('appointments.synced', { defaultValue: 'Synced with patient dashboard' })}
                 </span>
               </div>
 
               <div className="flex justify-end">
                 <div className="flex items-center gap-2 text-xs">
-                  <span className="text-slate-500 dark:text-slate-400">Status</span>
+                  <span className="text-slate-500 dark:text-slate-400">{t('appointments.statusLabel', { defaultValue: 'Status' })}</span>
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
@@ -631,11 +629,11 @@ export default function Appointments() {
             {/* Upcoming appointments */}
             <div className="space-y-3 mb-6">
               <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
-                Upcoming appointments
+                {t('appointments.upcomingList', { defaultValue: 'Upcoming appointments' })}
               </h3>
               {filteredUpcomingAppointments.length === 0 ? (
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  No upcoming appointments.
+                  {t('appointments.noUpcomingList', { defaultValue: 'No upcoming appointments.' })}
                 </p>
               ) : (
                 <div className="space-y-4">
@@ -698,14 +696,19 @@ export default function Appointments() {
                               />
                             </div>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                              <input
-                                type="time"
+                              <select
                                 name="duration_minutes"
-                                step="900"
-                                value={minutesToTimeString(editForm?.duration_minutes)}
+                                value={editForm?.duration_minutes || 60}
                                 onChange={handleEditChange}
                                 className="px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                              />
+                              >
+                                <option value="15">15 min</option>
+                                <option value="30">30 min</option>
+                                <option value="45">45 min</option>
+                                <option value="60">1 hour</option>
+                                <option value="90">1.5 hours</option>
+                                <option value="120">2 hours</option>
+                              </select>
                               <input
                                 name="status"
                                 value={editForm?.status || 'scheduled'}
@@ -803,11 +806,11 @@ export default function Appointments() {
             {/* Past appointments */}
             <div className="space-y-3 border-t border-slate-200 dark:border-slate-700 pt-4">
               <h3 className="text-sm font-semibold text-slate-900 dark:text-white">
-                Past appointments
+                {t('appointments.pastList', { defaultValue: 'Past appointments' })}
               </h3>
               {filteredPastAppointments.length === 0 ? (
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  No past appointments.
+                  {t('appointments.noPastList', { defaultValue: 'No past appointments.' })}
                 </p>
               ) : (
                 <div className="space-y-4">
@@ -878,12 +881,12 @@ export default function Appointments() {
       {showSuccessModal && (
         <>
           <div className="fixed inset-0 top-0 left-0 right-0 bottom-0 z-[9999] flex items-center justify-center bg-black/60">
-            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6 border border-slate-200 dark:border-slate-700">
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md mx-3 sm:mx-4 p-5 sm:p-6 border border-slate-200 dark:border-slate-700">
               <h3 className="text-xl font-semibold text-slate-900 dark:text-white mb-2">
-                Appointment scheduled
+                {t('appointments.modalTitle', { defaultValue: 'Appointment scheduled' })}
               </h3>
               <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                {lastCreated?.appointment_type || 'Appointment'} has been scheduled for{' '}
+                {lastCreated?.appointment_type || 'Appointment'} {t('appointments.modalScheduledFor', { defaultValue: 'has been scheduled for' })}{' '}
                 {lastCreated?.scheduled_date
                   ? new Date(lastCreated.scheduled_date).toLocaleString('en-US', {
                       year: 'numeric',

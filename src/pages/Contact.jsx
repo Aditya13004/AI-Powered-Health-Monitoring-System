@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { EnvelopeIcon, PhoneIcon, MapPinIcon, PaperAirplaneIcon } from '@heroicons/react/24/outline';
+import { useTranslation } from 'react-i18next';
 
 export default function Contact() {
+  const { t } = useTranslation();
   const [sent, setSent] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -35,17 +37,17 @@ export default function Contact() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6 }}
-          className="text-center mb-16"
+          className="text-center mb-10 sm:mb-16"
         >
-          <h1 className="text-4xl sm:text-5xl font-bold text-slate-900 dark:text-white mb-6">
-            Get in <span className="gradient-text">Touch</span>
+          <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-slate-900 dark:text-white mb-4 sm:mb-6">
+            {t('contact.title')}
           </h1>
-          <p className="text-xl text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
-            We'd love to hear from you. Send us a message and we'll respond as soon as possible.
+          <p className="text-base sm:text-xl text-slate-600 dark:text-slate-400 max-w-2xl mx-auto">
+            {t('contact.subtitle')}
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 lg:gap-12">
           {/* Contact Information */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
@@ -150,7 +152,7 @@ export default function Contact() {
                 <form onSubmit={onSubmit} className="space-y-6">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                      Full Name *
+                      {t('contact.name')} *
                     </label>
                     <input
                       required
@@ -164,7 +166,7 @@ export default function Contact() {
 
                   <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                      Email Address *
+                      {t('contact.email')} *
                     </label>
                     <input
                       required
@@ -179,7 +181,7 @@ export default function Contact() {
 
                   <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">
-                      Message *
+                      {t('contact.message')} *
                     </label>
                     <textarea
                       required
@@ -199,7 +201,7 @@ export default function Contact() {
                     className="w-full btn-primary"
                   >
                     <PaperAirplaneIcon className="h-5 w-5 mr-2" />
-                    Send Message
+                    {t('contact.send')}
                   </motion.button>
                 </form>
               )}

@@ -7,8 +7,10 @@ import {
   MapPinIcon,
   ArrowTopRightOnSquareIcon
 } from '@heroicons/react/24/outline';
+import { useTranslation } from 'react-i18next';
 
 export default function Footer() {
+  const { t } = useTranslation();
   const currentYear = new Date().getFullYear();
 
   const footerLinks = {
@@ -50,7 +52,7 @@ export default function Footer() {
       <div className="container-custom">
         {/* Main Footer Content */}
         <div className="py-16">
-          <div className="grid grid-cols-1 lg:grid-cols-4 gap-8 lg:gap-12">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
             {/* Brand Section */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}
@@ -68,8 +70,7 @@ export default function Footer() {
                 </span>
               </div>
               <p className="text-slate-600 dark:text-slate-400 mb-6 leading-relaxed">
-                Revolutionizing healthcare with AI-powered monitoring and real-time insights. 
-                Your health, our priority.
+                {t('footer.desc')}
               </p>
               
               {/* Contact Info */}
@@ -138,7 +139,7 @@ export default function Footer() {
                 Get the latest health monitoring insights and product updates.
               </p>
             </div>
-            <div className="flex gap-3 w-full md:w-auto">
+            <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
               <input
                 type="email"
                 placeholder="Enter your email"
@@ -164,9 +165,9 @@ export default function Footer() {
           className="py-8 border-t border-slate-200/50 dark:border-slate-700/50"
         >
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-6">
+            <div className="flex flex-wrap items-center gap-4">
               <p className="text-sm text-slate-600 dark:text-slate-400">
-                © {currentYear} HealthSync. All Rights Reserved.
+                © {currentYear} HealthSync. {t('footer.rights')}
               </p>
               <div className="flex items-center gap-4">
                 {socialLinks.map((social, index) => (
@@ -183,7 +184,7 @@ export default function Footer() {
                 ))}
               </div>
             </div>
-            <div className="flex items-center gap-6 text-sm text-slate-600 dark:text-slate-400">
+            <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600 dark:text-slate-400">
               <span>Made with ❤️ for better health</span>
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse"></div>

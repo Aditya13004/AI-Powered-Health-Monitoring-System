@@ -27,6 +27,7 @@ import {
 } from '@heroicons/react/24/outline';
 
 import { aiService } from '../services/aiService';
+import { useTranslation } from 'react-i18next';
 
 // ─── Icon Helper ────────────────────────────────────────────────
 function getSensorIcon(sensorName) {
@@ -38,6 +39,7 @@ function getSensorIcon(sensorName) {
 
 // ─── Component ──────────────────────────────────────────────────
 export default function Dashboard() {
+  const { t } = useTranslation();
   const { user, signOut } = useAuth();
   const [points, setPoints] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -180,15 +182,15 @@ export default function Dashboard() {
                   <UserCircleIcon className="h-6 w-6 text-white" />
                 </div>
                 <div>
-                  <p className="text-sm text-slate-500 dark:text-slate-400">Welcome back,</p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">{t('dashboard.welcome', { defaultValue: 'Welcome back' })},</p>
                   <p className="font-bold text-slate-900 dark:text-white">{displayName}</p>
                 </div>
               </div>
               <h1 className="text-3xl sm:text-4xl font-bold text-slate-900 dark:text-white mt-3">
-                Health <span className="gradient-text">Dashboard</span>
+                {t('dashboard.title')}
               </h1>
               <p className="text-slate-500 dark:text-slate-400 mt-1 text-sm">
-                Real-time IoT monitoring — Temperature · Oxygen · Humidity
+                {t('dashboard.subtitle')}
               </p>
             </div>
 
@@ -197,40 +199,40 @@ export default function Dashboard() {
               {autoRefresh && (
                 <div className="flex items-center gap-2 px-3 py-1.5 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 text-xs font-medium">
                   <div className="w-2 h-2 bg-emerald-500 rounded-full animate-pulse" />
-                  Live
+                  {t('dashboard.live', { defaultValue: 'Live' })}
                 </div>
               )}
               <button
                 onClick={() => setAutoRefresh(v => !v)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium transition-all ${
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium transition-all ${
                   autoRefresh
                     ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 border-2 border-emerald-500'
                     : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 border-2 border-slate-300 dark:border-slate-600'
                 }`}
               >
                 {autoRefresh ? <PauseIcon className="h-4 w-4" /> : <PlayIcon className="h-4 w-4" />}
-                {autoRefresh ? 'Pause' : 'Start Live'}
+                {autoRefresh ? t('dashboard.pause', { defaultValue: 'Pause' }) : t('dashboard.startLive', { defaultValue: 'Start Live' })}
               </button>
               <button
                 onClick={manualRefresh}
                 className="p-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
                 title="Refresh data"
               >
-                <ArrowPathIcon className="h-5 w-5" />
+                <ArrowPathIcon className="h-4 w-4" />
               </button>
               <button
                 onClick={handleRefreshAI}
                 disabled={isAILoading}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-medium bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800 hover:bg-violet-100 dark:hover:bg-violet-900/50 transition-all disabled:opacity-50"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium bg-violet-50 dark:bg-violet-900/30 text-violet-700 dark:text-violet-300 border border-violet-200 dark:border-violet-800 hover:bg-violet-100 dark:hover:bg-violet-900/50 transition-all disabled:opacity-50"
               >
                 <CpuChipIcon className={`h-4 w-4 ${isAILoading ? 'animate-spin' : ''}`} />
-                {isAILoading ? 'Analyzing...' : 'Refresh AI'}
+                {isAILoading ? t('dashboard.analyzing', { defaultValue: 'Analyzing...' }) : t('dashboard.refreshAi', { defaultValue: 'Refresh AI' })}
               </button>
               <button
                 onClick={signOut}
-                className="px-4 py-2 rounded-xl text-sm font-medium text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-all"
+                className="px-3 py-1.5 rounded-xl text-xs sm:text-sm font-medium text-rose-600 dark:text-rose-400 bg-rose-50 dark:bg-rose-900/20 border border-rose-200 dark:border-rose-800 hover:bg-rose-100 dark:hover:bg-rose-900/40 transition-all"
               >
-                Logout
+                {t('dashboard.logout', { defaultValue: 'Logout' })}
               </button>
             </div>
           </div>
@@ -238,7 +240,7 @@ export default function Dashboard() {
           {/* Last update */}
           <div className="flex items-center gap-1.5 text-xs text-slate-400 dark:text-slate-500 mt-3">
             <ClockIcon className="h-3.5 w-3.5" />
-            Last updated: {lastUpdate.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+            {t('dashboard.lastUpdate', { defaultValue: 'Last updated:' })} {lastUpdate.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
           </div>
         </motion.div>
 
@@ -263,7 +265,7 @@ export default function Dashboard() {
                   <span className={`font-bold text-lg ${
                     activeAlerts.some(a => a.severity === 'critical') ? 'text-rose-700 dark:text-rose-300' : 'text-amber-700 dark:text-amber-300'
                   }`}>
-                    {activeAlerts.some(a => a.severity === 'critical') ? '🚨 Emergency Alert' : '⚠️ Health Warning'}
+                    {activeAlerts.some(a => a.severity === 'critical') ? '🚨 ' + t('dashboard.emergency', { defaultValue: 'Emergency Alert' }) : '⚠️ ' + t('dashboard.healthWarning', { defaultValue: 'Health Warning' })}
                   </span>
                 </div>
                 <div className="space-y-1">
@@ -287,45 +289,45 @@ export default function Dashboard() {
           transition={{ duration: 0.6, delay: 0.1 }}
           className="mb-6"
         >
-          <div className={`card flex items-center justify-between p-5 ${
+          <div className={`card p-4 sm:p-5 ${
             healthStatus === 'Critical' ? 'bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800' :
             healthStatus === 'Warning' ? 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800' :
             'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800'
           }`}>
-            <div className="flex items-center gap-4">
-              <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${
+            <div className="flex items-start gap-3 sm:gap-4">
+              <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
                 healthStatus === 'Critical' ? 'bg-rose-500' :
                 healthStatus === 'Warning' ? 'bg-amber-500' : 'bg-emerald-500'
               }`}>
                 {healthStatus === 'Normal'
-                  ? <CheckCircleIcon className="h-6 w-6 text-white" />
-                  : <ExclamationTriangleIcon className="h-6 w-6 text-white" />
+                  ? <CheckCircleIcon className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+                  : <ExclamationTriangleIcon className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
                 }
               </div>
-              <div>
-                <p className="text-sm text-slate-500 dark:text-slate-400">AI Health Summary</p>
-                <p className={`text-xl font-bold ${
+              <div className="flex-1 min-w-0">
+                <p className="text-sm text-slate-500 dark:text-slate-400">{t('dashboard.healthStatus')}</p>
+                <p className={`text-lg sm:text-xl font-bold ${
                   healthStatus.toLowerCase() === 'critical' ? 'text-rose-600 dark:text-rose-400' :
                   healthStatus.toLowerCase() === 'warning' ? 'text-amber-600 dark:text-amber-400' :
                   'text-emerald-600 dark:text-emerald-400'
                 }`}>{healthStatus}</p>
-                <p className="text-sm text-slate-600 dark:text-slate-300 mt-1 max-w-sm">
+                <p className="text-sm text-slate-600 dark:text-slate-300 mt-1">
                   {aiData.summary}
                 </p>
               </div>
             </div>
-            <div className="hidden sm:grid grid-cols-3 gap-6 text-center">
+            <div className="grid grid-cols-3 gap-3 sm:gap-6 text-center mt-4 pt-4 border-t border-current/10">
               <div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Avg Temp</p>
-                <p className="text-lg font-bold text-slate-900 dark:text-white">{avgTemp}°C</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{t('dashboard.avgTemp', { defaultValue: 'Avg Temp' })}</p>
+                <p className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">{avgTemp}°C</p>
               </div>
               <div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Avg SpO₂</p>
-                <p className="text-lg font-bold text-slate-900 dark:text-white">{avgO2}%</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{t('dashboard.avgO2', { defaultValue: 'Avg SpO₂' })}</p>
+                <p className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">{avgO2}%</p>
               </div>
               <div>
-                <p className="text-xs text-slate-500 dark:text-slate-400">Avg Humidity</p>
-                <p className="text-lg font-bold text-slate-900 dark:text-white">{avgHumidity}%</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{t('dashboard.avgHumidity', { defaultValue: 'Avg Humidity' })}</p>
+                <p className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">{avgHumidity}%</p>
               </div>
             </div>
           </div>
@@ -336,11 +338,11 @@ export default function Dashboard() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="grid grid-cols-1 sm:grid-cols-3 gap-6 mb-8"
+          className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8"
         >
           {/* Temperature */}
           <VitalCard
-            label="Body Temperature"
+            label={t('dashboard.temp')}
             value={latest?.temp ?? '—'}
             unit="°C"
             icon={SunIcon}
@@ -349,7 +351,7 @@ export default function Dashboard() {
           />
           {/* Oxygen */}
           <VitalCard
-            label="Oxygen Saturation (SpO₂)"
+            label={t('dashboard.spO2')}
             value={latest?.o2 ?? '—'}
             unit="%"
             icon={ShieldCheckIcon}
@@ -357,7 +359,7 @@ export default function Dashboard() {
           />
           {/* Humidity */}
           <VitalCard
-            label="Humidity"
+            label={t('dashboard.humidity')}
             value={latest?.humidity ?? '—'}
             unit="%"
             icon={CloudIcon}
@@ -370,7 +372,7 @@ export default function Dashboard() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.3 }}
-          className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8"
+          className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8 overflow-x-hidden"
         >
           <TemperatureChart data={points} />
           <OxygenChart data={points} />
@@ -389,8 +391,8 @@ export default function Dashboard() {
               <CpuChipIcon className="h-5 w-5" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-white">Smart AI Health Insights</h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400">Powered by real-time sensor analysis</p>
+              <h2 className="text-lg font-bold text-slate-900 dark:text-white">{t('dashboard.aiInsight')}</h2>
+              <p className="text-sm text-slate-500 dark:text-slate-400">{t('dashboard.aiInsightSub', { defaultValue: 'Powered by real-time sensor analysis' })}</p>
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -434,7 +436,7 @@ export default function Dashboard() {
                 );
               })
             ) : (
-              <p className="text-slate-500 text-sm">No insights available right now.</p>
+              <p className="text-slate-500 text-sm">{t('dashboard.noInsights', { defaultValue: 'No insights available right now.' })}</p>
             )}
           </div>
         </motion.div>
@@ -444,18 +446,18 @@ export default function Dashboard() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.5 }}
-          className="grid grid-cols-2 sm:grid-cols-4 gap-4"
+          className="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4"
         >
           {[
-            { label: 'Data Points', value: points.length, sub: 'sensor readings' },
-            { label: 'Avg Temperature', value: `${avgTemp}°C`, sub: 'DS18B20' },
-            { label: 'Avg SpO₂', value: `${avgO2}%`, sub: 'Pulse Oximeter' },
-            { label: 'Avg Humidity', value: `${avgHumidity}%`, sub: 'DHT22' },
+            { label: t('dashboard.dataPoints', { defaultValue: 'Data Points' }), value: points.length, sub: t('dashboard.sensorReadings', { defaultValue: 'sensor readings' }) },
+            { label: t('dashboard.avgTemp', { defaultValue: 'Avg Temp' }), value: `${avgTemp}°C`, sub: 'DS18B20' },
+            { label: t('dashboard.avgO2', { defaultValue: 'Avg SpO₂' }), value: `${avgO2}%`, sub: t('dashboard.pulseOximeter', { defaultValue: 'Pulse Oximeter' }) },
+            { label: t('dashboard.avgHumidity', { defaultValue: 'Avg Humidity' }), value: `${avgHumidity}%`, sub: 'DHT22' },
           ].map((stat, i) => (
             <div key={i} className="card text-center">
               <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">{stat.label}</p>
-              <p className="text-2xl font-bold text-slate-900 dark:text-white">{stat.value}</p>
-              <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{stat.sub}</p>
+              <p className="text-xl sm:text-2xl font-bold text-slate-900 dark:text-white">{stat.value}</p>
+              <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5 truncate">{stat.sub}</p>
             </div>
           ))}
         </motion.div>

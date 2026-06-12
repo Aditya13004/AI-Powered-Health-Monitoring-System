@@ -6,8 +6,10 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { EnvelopeIcon, LockClosedIcon, EyeIcon, EyeSlashIcon, ShieldCheckIcon } from '@heroicons/react/24/outline';
 import { useAuth } from '../contexts/AuthContext';
+import { useTranslation } from 'react-i18next';
 
 export default function Login() {
+  const { t } = useTranslation();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -57,10 +59,10 @@ export default function Login() {
               <ShieldCheckIcon className="h-8 w-8 text-white" />
             </motion.div>
             <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">
-              Welcome Back
+              {t('auth.loginTitle')}
             </h1>
             <p className="text-slate-500 dark:text-slate-400">
-              Sign in to your HealthSync account
+              {t('auth.loginSub')}
             </p>
           </div>
 
@@ -75,7 +77,7 @@ export default function Login() {
               {/* Email */}
               <div>
                 <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
-                  Email Address
+                  {t('auth.emailLabel')}
                 </label>
                 <div className="relative">
                   <EnvelopeIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
@@ -85,7 +87,7 @@ export default function Login() {
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full pl-11 pr-4 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-white/70 dark:bg-slate-800/70 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200"
-                    placeholder="you@example.com"
+                    placeholder={t('auth.emailPlaceholder')}
                     autoComplete="email"
                   />
                 </div>
@@ -94,7 +96,7 @@ export default function Login() {
               {/* Password */}
               <div>
                 <label className="block text-sm font-semibold text-slate-700 dark:text-slate-300 mb-2">
-                  Password
+                  {t('auth.passLabel')}
                 </label>
                 <div className="relative">
                   <LockClosedIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
@@ -104,7 +106,7 @@ export default function Login() {
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     className="w-full pl-11 pr-12 py-3 rounded-xl border border-slate-200 dark:border-slate-600 bg-white/70 dark:bg-slate-800/70 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent transition-all duration-200"
-                    placeholder="Enter your password"
+                    placeholder={t('auth.passPlaceholder')}
                     autoComplete="current-password"
                   />
                   <button
@@ -142,10 +144,10 @@ export default function Login() {
                 {loading ? (
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    Signing in...
+                    {t('auth.signinginBtn')}
                   </div>
                 ) : (
-                  'Sign In'
+                  t('auth.signinBtn')
                 )}
               </motion.button>
             </form>
@@ -153,12 +155,12 @@ export default function Login() {
             {/* Footer */}
             <div className="mt-6 text-center">
               <p className="text-sm text-slate-500 dark:text-slate-400">
-                Don't have an account?{' '}
+                {t('auth.noAccount')}{' '}
                 <Link
                   to="/signup"
                   className="font-semibold text-blue-600 dark:text-blue-400 hover:underline"
                 >
-                  Create account
+                  {t('auth.createAccount')}
                 </Link>
               </p>
             </div>
@@ -171,7 +173,7 @@ export default function Login() {
             transition={{ delay: 0.5 }}
             className="text-center text-xs text-slate-400 dark:text-slate-500 mt-4"
           >
-            Demo mode: any email &amp; password will work if Supabase is not configured.
+            {t('auth.demoNote')}
           </motion.p>
         </motion.div>
       </div>

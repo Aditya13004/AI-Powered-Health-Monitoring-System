@@ -16,6 +16,7 @@ import Appointments from './pages/Appointments.jsx';
 import Contact from './pages/Contact.jsx';
 import Login from './pages/Login.jsx';
 import Signup from './pages/Signup.jsx';
+import OcrScanner from './pages/OcrScanner.jsx';
 
 export default function App() {
   return (
@@ -30,6 +31,7 @@ export default function App() {
           <Route path="/contact" element={<Contact />} />
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
+          <Route path="/ocr" element={<OcrScanner />} />
 
           {/* Protected route — requires authentication */}
           <Route
