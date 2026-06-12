@@ -140,7 +140,7 @@ export default function Chatbot() {
     } catch (err) {
       console.error('Chat error:', err);
       const errMsg = err?.message?.includes('API key') 
-        ? '⚠️ Invalid API key. Please check your VITE_GEMINI_API_KEY in .env.'
+        ? '⚠️ Invalid API key. Please check your VITE_GROQ_API_KEY in .env.'
         : err?.message?.includes('quota') || err?.message?.includes('429')
         ? '⚠️ API quota exceeded. Please wait a moment and try again.'
         : `API Error: ${err?.message || "Unknown error occurred"}`;
