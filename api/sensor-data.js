@@ -60,9 +60,9 @@ export default async function handler(req, res) {
         'Prefer': 'return=representation',
       },
       body: JSON.stringify({
-        temperature,
-        oxygen,
-        humidity,
+        temperature: parseFloat(Number(temperature).toFixed(1)),
+        oxygen: Math.round(Number(oxygen)),
+        humidity: Math.round(Number(humidity)),
         status,
         timestamp: new Date().toISOString(),
       }),
