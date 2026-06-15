@@ -41,6 +41,48 @@ app.post('/api/twinehealth/token', async (req, res) => {
   }
 });
 
+// Secure endpoint to receive sensor data from hardware and forward to Supabase
+app.post('/api/sensors', async (req, res) => {
+  const { temperature, oxygen, humidity, status } = req.body;
+
+  const supabaseUrl = process.env.VITE_SUPABASE_URL;
+  const supabaseKey = process.env.VITE_SUPABASE_ANON_KEY;
+
+  if (!supabaseUrl || !supabaseKey) {
+    return res.status(500).json({ error: 'Server configuration error: Missing Supabase keys.' });
+  }
+
+  if (temperature === undefined || oxygen === undefined || humidity === undefined) {
+    return res.status(400).json({ error: 'Missing sensor data (temperature, oxygen, humidity).' });
+  }
+
+  try {
+    // Forward the data to Supabase using the server's secret keys
+    await axios.post(
+      `${supabaseUrl}/rest/v1/sensor_data`,
+      {
+        temperature,
+        oxygen,
+        humidity,
+        status: status || 'normal'
+      },
+      {
+        headers: {
+          'apikey': supabaseKey,
+          'Authorization': `Bearer ${supabaseKey}`,
+          'Content-Type': 'application/json',
+          'Prefer': 'return=minimal'
+        }
+      }
+    );
+
+    res.status(201).json({ success: true, message: 'Sensor data saved securely via server!' });
+  } catch (error) {
+    console.error('Error saving to Supabase:', error?.response?.data || error.message);
+    res.status(500).json({ error: 'Failed to save sensor data to database.' });
+  }
+});
+
 app.listen(PORT, () => {
   console.log(`TwineHealth proxy listening on http://localhost:${PORT}`);
 });

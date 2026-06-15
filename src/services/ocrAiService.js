@@ -110,4 +110,85 @@ Return only the JSON object:`;
       throw new Error(err?.message || 'AI analysis failed. Please try again.');
     }
   },
+
+  async analyzeChatbotUpload(ocrText) {
+    if (!apiKey) throw new Error('Groq API key not configured.');
+    if (!ocrText || ocrText.trim().length < 10) {
+      throw new Error('Not enough text to analyze. Please upload a clearer document.');
+    }
+
+    const lang = localStorage.getItem('i18nextLng') || 'en';
+    const prompt = `You are a helpful medical AI assistant. A user has uploaded a medical document via a chat interface and extracted its text via OCR. Analyze the text below and return a JSON object. Provide all JSON values entirely in the language corresponding to ISO code: ${lang}.
+
+RULES:
+- Extract any prescribed medications along with their dosage, frequency, and instructions.
+- Extract any important warnings and provide a brief medical summary.
+- Do NOT diagnose or prescribe. Keep it patient-friendly.
+- Return ONLY the JSON object.
+
+REQUIRED JSON FORMAT:
+{
+  "summary": "string (Brief 2-3 sentence medical summary of what the document contains)",
+  "warnings": ["string (Important warnings or flags)"],
+  "medications": [
+    {
+      "name": "string (Medicine name)",
+      "dosage": "string (Dosage amount)",
+      "frequency": "string (Frequency of intake)",
+      "instructions": "string (Patient instructions)"
+    }
+  ]
+}
+
+EXTRACTED TEXT (first 3500 chars):
+"""
+${ocrText.substring(0, 3500)}
+"""
+
+Return only the JSON object:`;
+
+    try {
+      const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          model: "llama-3.1-8b-instant",
+          messages: [{ role: "user", content: prompt }],
+          response_format: { type: "json_object" },
+          temperature: 0.2
+        })
+      });
+
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error?.message || `Groq API Error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      let responseText = data.choices[0].message.content.trim();
+
+      responseText = responseText
+        .replace(/^```json\s*/i, '')
+        .replace(/^```\s*/i, '')
+        .replace(/```\s*$/i, '')
+        .trim();
+
+      const parsed = JSON.parse(responseText);
+
+      return {
+        summary: parsed.summary || 'Document analyzed successfully.',
+        warnings: Array.isArray(parsed.warnings) ? parsed.warnings : [],
+        medications: Array.isArray(parsed.medications) ? parsed.medications : [],
+      };
+    } catch (err) {
+      console.error('Chatbot OCR AI Analysis Error:', err);
+      if (err instanceof SyntaxError) {
+        throw new Error('AI returned an unexpected response format. Please try again.');
+      }
+      throw new Error(err?.message || 'AI analysis failed. Please try again.');
+    }
+  },
 };

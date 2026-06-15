@@ -4,17 +4,21 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { 
   PaperAirplaneIcon, 
+  PaperClipIcon,
   XMarkIcon, 
   SparklesIcon,
   MicrophoneIcon,
   SpeakerWaveIcon,
-  SpeakerXMarkIcon
+  SpeakerXMarkIcon,
+  DocumentIcon
 } from '@heroicons/react/24/outline';
 import { MicrophoneIcon as MicrophoneIconSolid } from '@heroicons/react/24/solid';
 import { motion, AnimatePresence } from 'framer-motion';
 import { aiService } from '../services/aiService';
+import { ocrAiService } from '../services/ocrAiService';
 import healthDataService from '../services/healthDataService';
 import { useTranslation } from 'react-i18next';
+import { preprocessImage, pdfToImageBlob, runTesseractOcr } from '../lib/chatbotOcrHelpers';
 
 export default function Chatbot() {
   const { t, i18n } = useTranslation();
@@ -26,8 +30,14 @@ export default function Chatbot() {
   const [isLoading, setIsLoading] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [autoSpeak, setAutoSpeak] = useState(false);
+  
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [filePreviewUrl, setFilePreviewUrl] = useState(null);
+  const [uploadStatus, setUploadStatus] = useState('');
+  
   const messagesEndRef = useRef(null);
   const recognitionRef = useRef(null);
+  const fileInputRef = useRef(null);
 
   // Initialize Speech Recognition
   useEffect(() => {
@@ -161,10 +171,114 @@ export default function Chatbot() {
     }
   };
 
+  const handleFileSelect = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'application/pdf'];
+    if (!validTypes.includes(file.type)) {
+      alert('Invalid file type. Please upload JPG, PNG, or PDF.');
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      alert('File too large. Max 10MB.');
+      return;
+    }
+    setSelectedFile(file);
+    if (file.type === 'application/pdf') {
+      setFilePreviewUrl(null);
+    } else {
+      setFilePreviewUrl(URL.createObjectURL(file));
+    }
+    e.target.value = '';
+  };
+
+  const clearFile = () => {
+    setSelectedFile(null);
+    if (filePreviewUrl) URL.revokeObjectURL(filePreviewUrl);
+    setFilePreviewUrl(null);
+    setUploadStatus('');
+  };
+
+  const processFileUpload = async (file) => {
+    setIsLoading(true);
+    setUploadStatus('Preprocessing...');
+    try {
+      setMessages((prev) => [...prev, { role: 'bot', content: '' }]);
+
+      let imageInput = file;
+      if (file.type === 'application/pdf') {
+        setUploadStatus('Rendering PDF...');
+        imageInput = await pdfToImageBlob(file);
+      }
+      
+      setUploadStatus('Enhancing image...');
+      imageInput = await preprocessImage(imageInput);
+      
+      setUploadStatus('Extracting text (OCR)...');
+      const ocrResult = await runTesseractOcr(imageInput, (progress) => {
+        setUploadStatus(`Extracting text (${progress}%)...`);
+      });
+
+      if (!ocrResult.text || ocrResult.text.trim().length < 10) {
+        throw new Error("Could not read enough text from the document.");
+      }
+
+      setUploadStatus('Analyzing medical data...');
+      const analysis = await ocrAiService.analyzeChatbotUpload(ocrResult.text);
+      
+      let formattedMsg = `**Document Summary**\n${analysis.summary}\n\n`;
+      if (analysis.warnings && analysis.warnings.length > 0) {
+        formattedMsg += `⚠️ **Important Warnings**\n`;
+        analysis.warnings.forEach(w => formattedMsg += `- ${w}\n`);
+        formattedMsg += `\n`;
+      }
+      if (analysis.medications && analysis.medications.length > 0) {
+        formattedMsg += `💊 **Medications**\n`;
+        analysis.medications.forEach(m => {
+          formattedMsg += `- **${m.name}**\n`;
+          if (m.dosage) formattedMsg += `  Dosage: ${m.dosage}\n`;
+          if (m.frequency) formattedMsg += `  Frequency: ${m.frequency}\n`;
+          if (m.instructions) formattedMsg += `  Instructions: ${m.instructions}\n`;
+        });
+      }
+
+      setMessages((prev) => {
+        const newMessages = [...prev];
+        newMessages[newMessages.length - 1].content = formattedMsg;
+        return newMessages;
+      });
+
+      if (autoSpeak) speakText(analysis.summary);
+      
+    } catch (err) {
+      console.error("Upload error:", err);
+      const errMsg = `⚠️ Error processing file: ${err.message}`;
+      setMessages((prev) => {
+        const updated = [...prev];
+        const lastIndex = updated.length - 1;
+        updated[lastIndex] = { ...updated[lastIndex], content: errMsg };
+        return updated;
+      });
+      if (autoSpeak) speakText(errMsg);
+    } finally {
+      setIsLoading(false);
+      clearFile();
+    }
+  };
+
   const onSubmit = async (e) => {
     e?.preventDefault();
     const text = input.trim();
-    if (!text || isLoading) return;
+    if ((!text && !selectedFile) || isLoading) return;
+
+    if (selectedFile) {
+      const userMsg = text ? `Uploaded document: ${selectedFile.name}\n${text}` : `Uploaded document: ${selectedFile.name}`;
+      setMessages((m) => [...m, { role: 'user', content: userMsg }]);
+      setInput('');
+      await processFileUpload(selectedFile);
+      return;
+    }
+
     setMessages((m) => [...m, { role: 'user', content: text }]);
     setInput('');
     await streamAssistant(text);
@@ -276,7 +390,56 @@ export default function Chatbot() {
 
             {/* Input Area */}
             <div className="p-3 border-t border-white/40 dark:border-slate-700/60 bg-white/60 dark:bg-slate-800/70 backdrop-blur-md">
+              {/* File Preview */}
+              {selectedFile && (
+                <div className="mb-3 p-2 bg-slate-100 dark:bg-slate-700/50 rounded-xl flex items-center gap-3 border border-slate-200 dark:border-slate-600">
+                  <div className="h-10 w-10 bg-blue-100 dark:bg-blue-900/30 rounded-lg flex flex-shrink-0 items-center justify-center overflow-hidden">
+                    {filePreviewUrl ? (
+                      <img src={filePreviewUrl} alt="Preview" className="h-full w-full object-cover" />
+                    ) : (
+                      <DocumentIcon className="h-5 w-5 text-blue-500" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-xs font-medium text-slate-700 dark:text-slate-300 truncate">{selectedFile.name}</p>
+                    <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                      {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={clearFile}
+                    className="p-1.5 hover:bg-rose-100 dark:hover:bg-rose-900/30 rounded-lg text-slate-400 hover:text-rose-500 transition-colors"
+                  >
+                    <XMarkIcon className="h-4 w-4" />
+                  </button>
+                </div>
+              )}
+              
+              {uploadStatus && (
+                <div className="mb-2 px-2 flex items-center gap-2">
+                  <div className="w-1.5 h-1.5 bg-blue-500 rounded-full animate-ping" />
+                  <span className="text-xs text-blue-600 dark:text-blue-400 font-medium">{uploadStatus}</span>
+                </div>
+              )}
+
               <form onSubmit={onSubmit} className="flex items-center gap-2">
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  onChange={handleFileSelect}
+                  className="hidden"
+                  accept=".jpg,.jpeg,.png,.pdf"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  title="Upload Document"
+                  disabled={isLoading}
+                  className="p-2.5 rounded-full bg-slate-100 dark:bg-slate-700/80 text-slate-500 hover:text-blue-500 dark:text-slate-400 dark:hover:text-blue-400 hover:bg-blue-50 dark:hover:bg-slate-700 transition-all flex-shrink-0 disabled:opacity-50"
+                >
+                  <PaperClipIcon className="h-5 w-5" />
+                </button>
                 <button
                   type="button"
                   onClick={toggleListening}
@@ -290,7 +453,7 @@ export default function Chatbot() {
                   {isListening ? <MicrophoneIconSolid className="h-5 w-5" /> : <MicrophoneIcon className="h-5 w-5" />}
                 </button>
                 <input
-                  className="flex-1 rounded-xl border border-slate-200/80 dark:border-slate-600/80 bg-white dark:bg-slate-800/90 text-slate-900 dark:text-white placeholder-slate-400 px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400 transition-all shadow-sm"
+                  className="flex-1 min-w-0 rounded-xl border border-slate-200/80 dark:border-slate-600/80 bg-white dark:bg-slate-800/90 text-slate-900 dark:text-white placeholder-slate-400 px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400/50 focus:border-blue-400 transition-all shadow-sm"
                   placeholder={isListening ? "Listening..." : t('chatbot.placeholder')}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
@@ -301,7 +464,7 @@ export default function Chatbot() {
                   whileTap={{ scale: 0.95 }}
                   className="btn-primary rounded-xl px-3 py-2.5 disabled:opacity-60 disabled:cursor-not-allowed shadow-md flex-shrink-0"
                   type="submit"
-                  disabled={isLoading || (!input.trim() && !isListening)}
+                  disabled={isLoading || (!input.trim() && !isListening && !selectedFile)}
                   aria-label="Send message"
                 >
                   <PaperAirplaneIcon className="h-5 w-5" />
