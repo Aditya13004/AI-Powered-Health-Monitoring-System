@@ -17,6 +17,7 @@ import Contact from './pages/Contact.jsx';
 import Login from './pages/Login.jsx';
 import Signup from './pages/Signup.jsx';
 import OcrScanner from './pages/OcrScanner.jsx';
+import NearbyHospitals from './pages/NearbyHospitals.jsx';
 
 export default function App() {
   return (
@@ -32,6 +33,7 @@ export default function App() {
           <Route path="/login" element={<Login />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/ocr" element={<OcrScanner />} />
+          <Route path="/nearby-hospitals" element={<NearbyHospitals />} />
 
           {/* Protected route — requires authentication */}
           <Route

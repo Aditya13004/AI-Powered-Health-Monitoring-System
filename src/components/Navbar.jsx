@@ -15,6 +15,7 @@ const navItems = [
   { to: '/dashboard', key: 'dashboard' },
   { to: '/appointments', key: 'appointments' },
   { to: '/ocr', key: 'ocrScanner' },
+  { to: '/nearby-hospitals', key: 'nearbyHospitals' },
   { to: '/contact', key: 'contact' },
 ];
 
@@ -70,8 +71,8 @@ export default function Navbar() {
           : 'bg-white/70 dark:bg-slate-900/70 border-white/20 dark:border-slate-700/20'
       }`}
     >
-      <div className="container-custom">
-        <div className="flex h-16 items-center justify-between gap-2 sm:gap-4">
+      <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex h-16 items-center justify-between gap-4 lg:gap-8">
 
           {/* Logo */}
           <Link to="/" className="flex items-center gap-2 group flex-shrink-0">
@@ -88,7 +89,7 @@ export default function Navbar() {
           </Link>
 
           {/* Desktop Navigation — centered */}
-          <nav className="hidden lg:flex items-center gap-0.5 flex-1 justify-center">
+          <nav className="hidden lg:flex items-center lg:gap-6 xl:gap-8 2xl:gap-10 flex-1 justify-center px-4">
             {navItems.map((item, index) => (
               <motion.div
                 key={item.to}
@@ -134,10 +135,10 @@ export default function Navbar() {
                       to="/login"
                       className="px-4 py-2 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all duration-200"
                     >
-                      Login
+                      {t('nav.login', { defaultValue: 'Login' })}
                     </Link>
                     <Link to="/signup" className="btn-primary text-sm px-4 py-2">
-                      Get Started
+                      {t('nav.getStarted', { defaultValue: 'Get Started' })}
                     </Link>
                   </div>
                 )}
@@ -243,10 +244,10 @@ export default function Navbar() {
                 ) : (
                   <>
                     <Link to="/login" onClick={() => setOpen(false)} className="w-full inline-flex items-center justify-center px-4 py-2 rounded-xl text-sm font-medium text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all">
-                      Login
+                      {t('nav.login', { defaultValue: 'Login' })}
                     </Link>
                     <Link to="/signup" onClick={() => setOpen(false)} className="btn-primary w-full justify-center text-sm">
-                      Get Started
+                      {t('nav.getStarted', { defaultValue: 'Get Started' })}
                     </Link>
                   </>
                 )}
