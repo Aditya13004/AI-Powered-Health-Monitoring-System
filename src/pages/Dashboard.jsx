@@ -8,6 +8,7 @@ import VitalCard from '../components/VitalCard.jsx';
 import TemperatureChart from '../components/charts/TemperatureChart.jsx';
 import OxygenChart from '../components/charts/OxygenChart.jsx';
 import HumidityChart from '../components/charts/HumidityChart.jsx';
+import HeartRateChart from '../components/charts/HeartRateChart.jsx';
 import healthDataService from '../services/healthDataService';
 import { useAuth } from '../contexts/AuthContext';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -24,6 +25,7 @@ import {
   CpuChipIcon,
   CheckCircleIcon,
   UserCircleIcon,
+  HeartIcon,
 } from '@heroicons/react/24/outline';
 
 import { aiService } from '../services/aiService';
@@ -34,6 +36,7 @@ function getSensorIcon(sensorName) {
   if (sensorName?.toLowerCase().includes('temp')) return SunIcon;
   if (sensorName?.toLowerCase().includes('oxy') || sensorName?.toLowerCase().includes('spo2')) return ShieldCheckIcon;
   if (sensorName?.toLowerCase().includes('humid')) return CloudIcon;
+  if (sensorName?.toLowerCase().includes('heart') || sensorName?.toLowerCase().includes('hr') || sensorName?.toLowerCase().includes('bpm')) return HeartIcon;
   return CpuChipIcon;
 }
 
@@ -53,6 +56,30 @@ export default function Dashboard() {
     alerts: []
   });
   const intervalRef = useRef(null);
+
+  const [simulatedHr, setSimulatedHr] = useState(72);
+  const [hrData, setHrData] = useState([]);
+
+  // Simulated Heart Rate Effect
+  useEffect(() => {
+    const initialData = Array.from({ length: 30 }, (_, i) => ({
+      t: i,
+      hr: Math.floor(Math.random() * (85 - 72 + 1)) + 72
+    }));
+    setHrData(initialData);
+    setSimulatedHr(initialData[initialData.length - 1].hr);
+
+    const interval = setInterval(() => {
+      const nextHr = Math.floor(Math.random() * (85 - 72 + 1)) + 72;
+      setSimulatedHr(nextHr);
+      setHrData(prev => {
+        const updated = [...prev, { t: prev.length ? prev[prev.length - 1].t + 1 : 0, hr: nextHr }];
+        return updated.length > 50 ? updated.slice(-50) : updated;
+      });
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   const refreshAIInsights = useCallback(async (dataPoints) => {
     if (!aiService.isConfigured || !dataPoints || dataPoints.length === 0) return;
@@ -152,11 +179,11 @@ export default function Dashboard() {
           <div className="animate-pulse space-y-6">
             <div className="h-10 bg-slate-200 dark:bg-slate-700 rounded-lg w-72" />
             <div className="h-4 bg-slate-200 dark:bg-slate-700 rounded w-96" />
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
-              {[...Array(3)].map((_, i) => <div key={i} className="h-36 bg-slate-200 dark:bg-slate-700 rounded-2xl" />)}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+              {[...Array(4)].map((_, i) => <div key={i} className="h-36 bg-slate-200 dark:bg-slate-700 rounded-2xl" />)}
             </div>
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              {[...Array(3)].map((_, i) => <div key={i} className="h-80 bg-slate-200 dark:bg-slate-700 rounded-2xl" />)}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {[...Array(4)].map((_, i) => <div key={i} className="h-80 bg-slate-200 dark:bg-slate-700 rounded-2xl" />)}
             </div>
           </div>
         </div>
@@ -338,7 +365,7 @@ export default function Dashboard() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8"
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-6 sm:mb-8"
         >
           {/* Temperature */}
           <VitalCard
@@ -365,6 +392,14 @@ export default function Dashboard() {
             icon={CloudIcon}
             status={!latest ? 'default' : (latest.humidity > 70 || latest.humidity < 30) ? 'medium' : 'normal'}
           />
+          {/* Heart Rate (Simulated) */}
+          <VitalCard
+            label={t('dashboard.heartRate', { defaultValue: 'Heart Rate' })}
+            value={simulatedHr}
+            unit="BPM"
+            icon={HeartIcon}
+            status={simulatedHr < 60 ? 'Low' : simulatedHr > 100 ? 'High' : 'Normal'}
+          />
         </motion.div>
 
         {/* ── Charts ── */}
@@ -372,11 +407,12 @@ export default function Dashboard() {
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.6, delay: 0.3 }}
-          className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6 mb-6 sm:mb-8 overflow-x-hidden"
+          className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8 overflow-x-hidden"
         >
           <TemperatureChart data={points} />
           <OxygenChart data={points} />
           <HumidityChart data={points} />
+          <HeartRateChart data={hrData} />
         </motion.div>
 
         {/* ── AI Health Insights ── */}

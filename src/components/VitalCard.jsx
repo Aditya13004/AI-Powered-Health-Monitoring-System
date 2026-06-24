@@ -6,12 +6,15 @@ export default function VitalCard({ label, value, unit, status, icon: Icon, tren
   const getStatusColor = (status) => {
     switch (status) {
       case 'high':
+      case 'High':
       case 'warning':
         return 'text-rose-600 dark:text-rose-400';
       case 'medium':
+      case 'Low':
         return 'text-amber-600 dark:text-amber-400';
       case 'low':
       case 'normal':
+      case 'Normal':
         return 'text-emerald-600 dark:text-emerald-400';
       default:
         return 'text-slate-600 dark:text-slate-400';
@@ -21,12 +24,15 @@ export default function VitalCard({ label, value, unit, status, icon: Icon, tren
   const getStatusBg = (status) => {
     switch (status) {
       case 'high':
+      case 'High':
       case 'warning':
         return 'bg-rose-50 dark:bg-rose-900/20 border-rose-200 dark:border-rose-800';
       case 'medium':
+      case 'Low':
         return 'bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800';
       case 'low':
       case 'normal':
+      case 'Normal':
         return 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-200 dark:border-emerald-800';
       default:
         return 'bg-slate-50 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700';
@@ -102,8 +108,8 @@ export default function VitalCard({ label, value, unit, status, icon: Icon, tren
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
               <div className={`w-2 h-2 rounded-full ${
-                status === 'high' || status === 'warning' ? 'bg-rose-500' :
-                status === 'medium' ? 'bg-amber-500' :
+                status === 'high' || status === 'High' || status === 'warning' ? 'bg-rose-500' :
+                status === 'medium' || status === 'Low' ? 'bg-amber-500' :
                 'bg-emerald-500'
               }`} />
               <span className={`text-sm font-medium ${getStatusColor(status)}`}>
@@ -111,7 +117,7 @@ export default function VitalCard({ label, value, unit, status, icon: Icon, tren
                  status === 'medium' ? 'Medium Risk' :
                  status === 'low' ? 'Low Risk' :
                  status === 'warning' ? 'Warning' :
-                 status === 'normal' ? 'Normal' :
+                 status === 'normal' || status === 'Normal' ? 'Normal' :
                  status}
               </span>
             </div>

@@ -79,6 +79,8 @@ You must include a brief disclaimer at the very end stating "Caution: This is fo
 
 IMPORTANT: You MUST reply entirely in the language corresponding to this ISO code: ${lang}.
 
+If the user asks for nearby hospitals, clinics, or doctors, you MUST provide them with this exact link to find hospitals near their current location: https://www.google.com/maps/search/hospitals+near+me/
+
 CURRENT REAL-TIME SENSOR READINGS FOR CONTEXT:
 ${JSON.stringify(currentReadings || {}, null, 2)}`;
 

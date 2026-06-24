@@ -20,6 +20,22 @@ import healthDataService from '../services/healthDataService';
 import { useTranslation } from 'react-i18next';
 import { preprocessImage, pdfToImageBlob, runTesseractOcr } from '../lib/chatbotOcrHelpers';
 
+const renderTextWithLinks = (text) => {
+  if (typeof text !== 'string') return text;
+  const urlRegex = /(https?:\/\/[^\s]+)/g;
+  const parts = text.split(urlRegex);
+  return parts.map((part, i) => {
+    if (part.match(urlRegex)) {
+      return (
+        <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-blue-500 underline hover:text-blue-600 transition-colors">
+          {part}
+        </a>
+      );
+    }
+    return part;
+  });
+};
+
 export default function Chatbot() {
   const { t, i18n } = useTranslation();
   const [open, setOpen] = useState(false);
@@ -364,7 +380,7 @@ export default function Chatbot() {
                       ? 'bg-gradient-to-r from-blue-600 to-teal-600 text-white rounded-br-sm shadow-blue-500/20'
                       : 'bg-white dark:bg-slate-800 text-slate-800 dark:text-slate-200 border border-slate-200/60 dark:border-slate-700/60 rounded-bl-sm'
                   }`}>
-                    {m.content || (m.role === 'bot' && isLoading ? (
+                    {m.content ? renderTextWithLinks(m.content) : (m.role === 'bot' && isLoading ? (
                       <div className="flex gap-1.5 items-center py-2 px-1">
                         <div className="w-1.5 h-1.5 bg-blue-500/60 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
                         <div className="w-1.5 h-1.5 bg-teal-500/60 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />

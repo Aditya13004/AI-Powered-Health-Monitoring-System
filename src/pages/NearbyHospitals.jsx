@@ -156,8 +156,8 @@ export default function NearbyHospitals() {
               className="block w-full pl-10 pr-3 py-3 border border-slate-200 dark:border-slate-700 rounded-xl bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
             />
           </div>
-          <div className="flex-1 overflow-x-auto pb-2 sm:pb-0 scrollbar-hide">
-            <div className="flex items-center gap-2 justify-start sm:justify-end">
+          <div className="flex-1 w-full">
+            <div className="flex flex-wrap items-center gap-2 justify-start sm:justify-end">
               {CATEGORIES.map(cat => (
                 <button
                   key={cat}
@@ -215,7 +215,7 @@ export default function NearbyHospitals() {
                     </p>
                   </div>
                   
-                  <div className="mt-auto pt-4 border-t border-slate-100 dark:border-slate-700 grid grid-cols-2 gap-3">
+                  <div className="mt-auto pt-4 border-t border-slate-100 dark:border-slate-700 grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {hospital.iframe ? (
                       <button
                         onClick={() => window.open(hospital.iframe.match(/src="([^"]+)"/)?.[1] || hospital.iframe, '_blank')}
